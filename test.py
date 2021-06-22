@@ -1,101 +1,102 @@
-'''
-    ENGG5104 1-1 JPEG Compression
-    @daibo
-    @1155053920
-'''
-import scipy.io as sio
 import numpy as np
 import cv2
-from matplotlib import pyplot as plt
-from matplotlib import cm as cm
+import matplotlib.pyplot as plt
+from operator import itemgetter, attrgetter
+import queue
 
-def patchRegion(i, j):
-    h_start = i * 8
-    h_end = h_start + 8
-    w_start = j * 8
-    w_end = w_start + 8
-    return h_start, h_end, w_start, w_end
+class Node:
+	def __init__(self):
+		self.prob = None
+		self.code = None
+		self.data = None
+		self.left = None
+		self.right = None 	# the color (the bin value) is only required in the leaves
+	def __lt__(self, other):
+		if (self.prob < other.prob):		# define rich comparison methods for sorting in the priority queue
+			return 1
+		else:
+			return 0
+	def __ge__(self, other):
+		if (self.prob > other.prob):
+			return 1
+		else:
+			return 0
+def rgb2gray(img):
+	gray_img = np.rint(img[:,:,0]*0.2989 + img[:,:,1]*0.5870 + img[:,:,2]*0.1140)
+	gray_img = gray_img.astype(int)
+	return gray_img
 
-def jpegCompress(image, quantmatrix):
-    '''
-        Compress(imagefile, quanmatrix simulates the lossy compression of
-        baseline JPEG, by quantizing the DCT coefficients in 8x8 blocks
-    '''
-    # Return compressed image in result
+def get2smallest(data):			# can be used instead of inbuilt function get(). was not used in  implementation
+    first = second = 1
+    fid=sid=0
+    for idx,element in enumerate(data):
+        if (element < first):
+            second = first
+            sid = fid
+            first = element
+            fid = idx
+        elif (element < second and element != first):
+            second = element
+    return fid,first,sid,second
+    
+def tree(probabilities):
+	prq = queue.PriorityQueue()
+	for color,probability in enumerate(probabilities):
+		leaf = Node()
+		leaf.data = color
+		leaf.prob = probability
+		prq.put(leaf)
 
-    H = np.size(image, 0)
-    W = np.size(image, 1)
+	while (prq.qsize()>1):
+		newnode = Node()		# create new node
+		l = prq.get()
+		r = prq.get()			# get the smalles probs in the leaves
+						# remove the smallest two leaves
+		newnode.left = l 		# left is smaller
+		newnode.right = r
+		newprob = l.prob+r.prob	# the new prob in the new node must be the sum of the other two
+		newnode.prob = newprob
+		prq.put(newnode)	# new node is inserted as a leaf, replacing the other two 
+	return prq.get()		# return the root node - tree is complete
 
-    # Convert to gray-scale image
-    if np.size(image, 2) > 1:
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+def huffman_traversal(root_node,tmp_array,f):		# traversal of the tree to generate codes
+	if (root_node.left is not None):
+		tmp_array[huffman_traversal.count] = 1
+		huffman_traversal.count+=1
+		huffman_traversal(root_node.left,tmp_array,f)
+		huffman_traversal.count-=1
+	if (root_node.right is not None):
+		tmp_array[huffman_traversal.count] = 0
+		huffman_traversal.count+=1
+		huffman_traversal(root_node.right,tmp_array,f)
+		huffman_traversal.count-=1
+	else:
+		huffman_traversal.output_bits[root_node.data] = huffman_traversal.count		#count the number of bits for each color
+		bitstream = ''.join(str(cell) for cell in tmp_array[1:huffman_traversal.count]) 
+		color = str(root_node.data)
+		wr_str = color+' '+ bitstream+'\n'
+		f.write(wr_str)		# write the color and the code to a file
+	return
 
-    # Number of 8x8 blocks in the height and width directions
-    h8 = int(H / 8)
-    w8 = int(W / 8)
-    iH = H
-    iW = W
+# Read an bmp image into a numpy array
+img = cv2.imread('images/lena.png')
+# img = imresize(img,10)		# resize to 10% (not strictly necessary - done for faster computation)
 
-    # Padding image
-    if H % 8 != 0:
-        image = np.lib.pad(image, ((0, 8 - H % 8), (0, 0)), 'constant', constant_values=((0, 0), (0, 0)))
-        h8 += 1
+# convert to grayscale
+gray_img = rgb2gray(img)
 
-    if W % 8 != 0:
-        image = np.lib.pad(image, ((0, 0), (0, 8 - W % 8)), 'constant', constant_values=((0, 0), (0, 0)))
-        w8 += 1
+# compute histogram of pixels
+hist = np.bincount(gray_img.ravel(),minlength=256)
 
-    image = image.astype("float")
-    dct_coefficient = image.copy()
-    result = image.copy()
-    # Calculate DCT coefficients for patches
-    for i in range(h8):
-        for j in range(w8):
-            h_start, h_end, w_start, w_end = patchRegion(i, j)
-            patch = image[h_start : h_end, w_start : w_end]
-            cv2.dct(patch, patch)
-            # Quantization
-            patch = np.round(patch / quantmatrix)
-            dct_coefficient[h_start : h_end, w_start : w_end] = patch
+probabilities = hist/np.sum(hist)		# a priori probabilities from frequencies
 
-    return dct_coefficient
+root_node = tree(probabilities)			# create the tree using the probs.
+tmp_array = np.ones([64],dtype=int)
+huffman_traversal.output_bits = np.empty(256,dtype=int) 
+huffman_traversal.count = 0
+f = open('codes.txt','w')
+huffman_traversal(root_node,tmp_array,f)		# traverse the tree and write the codes
 
-
-    # Convert back
-    for i in range(h8):
-        for j in range(w8):
-            h_start, h_end, w_start, w_end = patchRegion(i, j)
-            patch = dct_coefficient[h_start : h_end, w_start : w_end]
-            cv2.idct(patch, patch)
-            result[h_start : h_end, w_start : w_end] = patch
-
-    # Remove padding effect
-    result = result[0 : iH, 0 : iW]
-
-    return result, dct_coefficient
-
-if __name__ == '__main__':
-
-    im = cv2.imread('images/lena.png')
-
-    quantmatrix = sio.loadmat('quantmatrix.mat')['quantmatrix']
-    print(quantmatrix)
-
-    dct_coefficient = jpegCompress(im, quantmatrix)
-
-    plt.figure("JPEG Compression")
-
-    plt.subplot(131)
-    plt.imshow(cv2.cvtColor(im, cv2.COLOR_BGR2RGB))
-    plt.title("Original Image")
-
-    # plt.subplot(132)
-    # plt.imshow(out, cmap='gray')
-    # plt.title("Compressed Image")
-
-    plt.subplot(133)
-    plt.imshow(dct_coefficient, cmap='gray')
-    plt.title("DCT Image")
-
-    plt.show()
-
+input_bits = img.shape[0]*img.shape[1]*8	# calculate number of bits in grayscale 
+compression = (1-np.sum(huffman_traversal.output_bits*hist)/input_bits)*100	# compression rate
+print('Compression is ',compression,' percent')

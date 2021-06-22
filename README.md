@@ -1,4 +1,4 @@
-# Image Encoder
+# Image Compressor 2
 
 ## References
 ```
