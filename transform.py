@@ -36,16 +36,13 @@ def transform(img, qmat):
             # Quantization
             patch = np.round(patch / qmat)
             dct_coefficient[r_start : r_end, c_start : c_end] = patch
-    
-    return dct_coefficient
+    return dct_coefficient.astype(np.int8)
 
 def inverse_transform(dct_coefficient, qmat):
     rows, cols = dct_coefficient.shape[:2]
-    dct_cp = dct_coefficient.copy()
-
+    dct_cp = dct_coefficient.copy().astype(np.float64)
     # Number of 8x8 blocks
-    r8 = int(rows / 8)
-    c8 = int(cols / 8)
+    r8 = rows // 8; c8 = cols // 8
 
     result = dct_coefficient.copy()
 
@@ -59,4 +56,8 @@ def inverse_transform(dct_coefficient, qmat):
 
     # Remove padding effect
     result = result[0 : rows, 0 : cols]
-    return result
+    # Scale image
+    pixel_max = np.max(result); pixel_min = np.min(result)
+    result = (result - pixel_min)/(pixel_max - pixel_min)*255
+
+    return result.astype(np.uint8)
