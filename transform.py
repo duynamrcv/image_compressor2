@@ -25,7 +25,7 @@ def transform(img, qmat):
         c8 += 1
 
     img = img.astype("float")
-    dct_coefficient = img.copy()
+    dct_coefficient = np.zeros((rows//2, cols//2))
 
     # Calculate DCT coefficients for patches
     for i in range(r8):
@@ -35,22 +35,24 @@ def transform(img, qmat):
             cv2.dct(patch, patch)
             # Quantization
             patch = np.round(patch / qmat)
-            dct_coefficient[r_start : r_end, c_start : c_end] = patch
-    return dct_coefficient.astype(np.int8)
+            dct_coefficient[r_start//2 : r_end//2, c_start//2 : c_end//2] = patch[:4, :4]
+    return dct_coefficient.astype(np.int16)
 
 def inverse_transform(dct_coefficient, qmat):
     rows, cols = dct_coefficient.shape[:2]
+    rows *= 2; cols *=2
     dct_cp = dct_coefficient.copy().astype(np.float64)
     # Number of 8x8 blocks
     r8 = rows // 8; c8 = cols // 8
 
-    result = dct_coefficient.copy()
+    result = np.zeros((rows, cols))
 
     # Convert back
     for i in range(r8):
         for j in range(c8):
             r_start, r_end, c_start, c_end = patchRegion(i, j)
-            patch = dct_cp[r_start : r_end, c_start : c_end]
+            patch = np.zeros((8,8))
+            patch[:4, :4] = dct_cp[r_start//2 : r_end//2, c_start//2 : c_end//2]
             cv2.idct(patch, patch)
             result[r_start : r_end, c_start : c_end] = patch
 

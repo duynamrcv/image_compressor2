@@ -4,10 +4,9 @@ import matplotlib.pyplot as plt
 import pickle
 import time
 
-import redundancy as re
 import transform as tf
-import huffman as hm
 import arithmetic as ar
+import quality as qa
 
 if __name__ == "__main__":
     # Read image
@@ -32,18 +31,13 @@ if __name__ == "__main__":
     ################
     en_start = time.time()
 
-    # # Get redundancy
-    # red = re.get_redundancy(gray)
-
     # Tranformation and Quantization
     dct_coefficient = tf.transform(gray, qmat)
-    # print(dct_coefficient.dtype)
 
-    # Entropy coding: Huffman
-    # coding_table, coding_result = hm.encoding(dct_coefficient)
-    # pickle.dump(coding_table, open("coding_table.txt", 'wb'))
-    # pickle.dump(coding_result, open("coding_result.txt", 'wb'))
-    res, prob, quan_row, quan_col = ar.encode_image(dct_coefficient, block_size=4)
+    # Entropy coding: Arithmetic
+    freq = ar.probability(dct_coefficient)
+    range_left, range_right = ar.create_range(freq)
+    res = ar.compress(dct_coefficient, freq, range_left, range_right)
 
     en_finish = time.time()
     print("Encoding time: {:.2f}s".format(en_finish - en_start))
@@ -53,11 +47,9 @@ if __name__ == "__main__":
     ################
 
     de_start = time.time()
-    quan = ar.decode_image(res, prob, 4, quan_row, quan_col)
 
-    # Entropy decoding: Huffman
-    # rows, cols = dct_coefficient.shape[:2]
-    # de_huffman = hm.decoding(rows, cols, coding_table, coding_result)
+    # Entropy decoding: Arithmetic
+    quan = ar.decompress(res, freq, range_left, range_right, dct_coefficient.shape)
 
     # De-Tranformation and De-Quantization
     out = tf.inverse_transform(quan, qmat)
@@ -67,7 +59,24 @@ if __name__ == "__main__":
     de_finish = time.time()
     print("Decoding time: {:.2f}s".format(de_finish - de_start))
 
-    # Visulization
+    ##################
+    ### Compensate ###
+    ##################
+    out = cv2.blur(out, (3,3))
+    out = cv2.GaussianBlur(out, (5,5), 0)
+    blur = cv2.blur(out, (5,5))
+    unsharp = out - blur
+    out = out + unsharp*3
+
+    ###############
+    ### Quality ###
+    ###############
+    print("MSE: {}".format(qa.mse(gray, out)))
+    print("PSNR: {}".format(qa.psnr(gray, out)))
+
+    #################
+    ### Visualize ###
+    #################
     plt.subplot(121)
     plt.imshow(gray, cmap='gray'); plt.axis('off')
     plt.title("Original Image")
@@ -76,13 +85,6 @@ if __name__ == "__main__":
     plt.title("Reconstructed Image")
     plt.show()
 
-    # plt.subplot(131)
-    # plt.imshow(red, cmap='gray')
-    # plt.subplot(132)
-    # plt.imshow(out, cmap='gray')
-    # plt.subplot(133)
-    # plt.imshow(quan-dct_coefficient, cmap='gray')
+    # er = gray - out
+    # plt.hist(er.ravel(), 256, [0,256]); plt.axis('off')
     # plt.show()
-    
-    np.savetxt('data.csv', (quan-dct_coefficient).astype(np.int16), delimiter=',')
-    # plt.hist((out-red).ravel(),256,[0,256]); plt.show()

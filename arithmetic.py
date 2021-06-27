@@ -37,7 +37,6 @@ def compress(mat, freq, range_left, range_right):
 
         for j in range(i, i + block_size):
             oldLeft = l; oldRight = r
-            # if mat_1d[j] != 0:
             l = oldLeft + (oldRight - oldLeft) * range_left[mat_1d[j]]
             r = oldLeft + (oldRight - oldLeft) * range_right[mat_1d[j]]
         # result of the block is the average of (upper - lower)
