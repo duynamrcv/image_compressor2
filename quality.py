@@ -9,3 +9,9 @@ def mse(ori, rec):
 def psnr(ori, rec):
     mse_value = mse(ori, rec)
     return 10*(np.log10(255**2/mse_value))
+
+def compress_ratio(ori, data):
+    rows, cols = ori.shape[:2]
+    v_ori = rows*cols*8
+    v_data = len(data)*8.2
+    return v_ori/v_data

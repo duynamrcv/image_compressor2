@@ -73,6 +73,7 @@ if __name__ == "__main__":
     ###############
     print("MSE: {}".format(qa.mse(gray, out)))
     print("PSNR: {}".format(qa.psnr(gray, out)))
+    print("Compress ratio: {}".format(qa.compress_ratio(gray,res)))
 
     #################
     ### Visualize ###
