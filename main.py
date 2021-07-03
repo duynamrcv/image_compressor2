@@ -10,7 +10,7 @@ import quality as qa
 
 if __name__ == "__main__":
     # Read image
-    img = cv2.imread("images/cameraman.jpg")
+    img = cv2.imread("images/lena.png")
 
     # Convert image to gray scale
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -73,6 +73,7 @@ if __name__ == "__main__":
     ###############
     print("MSE: {}".format(qa.mse(gray, out)))
     print("PSNR: {}".format(qa.psnr(gray, out)))
+    print("Compress ratio: {}".format(qa.compress_ratio(gray,res)))
 
     #################
     ### Visualize ###
