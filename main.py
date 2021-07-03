@@ -10,7 +10,7 @@ import quality as qa
 
 if __name__ == "__main__":
     # Read image
-    img = cv2.imread("images/lena.png")
+    img = cv2.imread("images/cameraman.jpg")
 
     # Convert image to gray scale
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -66,7 +66,7 @@ if __name__ == "__main__":
     out = cv2.GaussianBlur(out, (5,5), 0)
     blur = cv2.blur(out, (5,5))
     unsharp = out - blur
-    out = out + unsharp*3
+    out = out + unsharp
 
     ###############
     ### Quality ###

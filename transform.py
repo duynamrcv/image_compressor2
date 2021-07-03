@@ -53,6 +53,7 @@ def inverse_transform(dct_coefficient, qmat):
             r_start, r_end, c_start, c_end = patchRegion(i, j)
             patch = np.zeros((8,8))
             patch[:4, :4] = dct_cp[r_start//2 : r_end//2, c_start//2 : c_end//2]
+            patch = patch*qmat
             cv2.idct(patch, patch)
             result[r_start : r_end, c_start : c_end] = patch
 
